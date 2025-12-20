@@ -1,0 +1,308 @@
+description: Pre-computed regime thresholds from historical data (quantile-based)
+quantile_low: 0.4
+quantile_high: 0.6
+thresholds:
+  USDCAD:
+    1h:
+      er_range_max: 0.163047
+      er_trend_min: 0.258658
+      adx_range_max: 21.67
+      adx_trend_min: 27.21
+    4h:
+      er_range_max: 0.168654
+      er_trend_min: 0.265957
+      adx_range_max: 22.49
+      adx_trend_min: 27.46
+    1d:
+      er_range_max: 0.149096
+      er_trend_min: 0.239883
+      adx_range_max: 19.67
+      adx_trend_min: 24.32
+  JP225.cash:
+    1h:
+      er_range_max: 0.167152
+      er_trend_min: 0.265507
+      adx_range_max: 21.22
+      adx_trend_min: 26.41
+    4h:
+      er_range_max: 0.158644
+      er_trend_min: 0.25387
+      adx_range_max: 21.36
+      adx_trend_min: 26.25
+    1d:
+      er_range_max: 0.143015
+      er_trend_min: 0.233544
+      adx_range_max: 18.76
+      adx_trend_min: 24.18
+  AUS200.cash:
+    1h:
+      er_range_max: 0.156556
+      er_trend_min: 0.248974
+      adx_range_max: 20.09
+      adx_trend_min: 24.96
+    4h:
+      er_range_max: 0.150067
+      er_trend_min: 0.237425
+      adx_range_max: 19.96
+      adx_trend_min: 24.74
+    1d:
+      er_range_max: 0.140149
+      er_trend_min: 0.226274
+      adx_range_max: 18.55
+      adx_trend_min: 22.53
+  GER40.cash:
+    1h:
+      er_range_max: 0.172043
+      er_trend_min: 0.27475
+      adx_range_max: 22.11
+      adx_trend_min: 27.35
+    4h:
+      er_range_max: 0.15823
+      er_trend_min: 0.256292
+      adx_range_max: 21.83
+      adx_trend_min: 26.7
+    1d:
+      er_range_max: 0.146286
+      er_trend_min: 0.246503
+      adx_range_max: 19.27
+      adx_trend_min: 23.45
+  EURUSD:
+    1h:
+      er_range_max: 0.170504
+      er_trend_min: 0.27139
+      adx_range_max: 22.73
+      adx_trend_min: 28.42
+    4h:
+      er_range_max: 0.175932
+      er_trend_min: 0.276043
+      adx_range_max: 22.38
+      adx_trend_min: 27.61
+    1d:
+      er_range_max: 0.151464
+      er_trend_min: 0.242129
+      adx_range_max: 20.49
+      adx_trend_min: 25.54
+  USDJPY:
+    1h:
+      er_range_max: 0.166428
+      er_trend_min: 0.264339
+      adx_range_max: 22.12
+      adx_trend_min: 27.66
+    4h:
+      er_range_max: 0.170904
+      er_trend_min: 0.270889
+      adx_range_max: 21.77
+      adx_trend_min: 26.66
+    1d:
+      er_range_max: 0.159618
+      er_trend_min: 0.24756
+      adx_range_max: 20.49
+      adx_trend_min: 25.46
+  AUDJPY:
+    1h:
+      er_range_max: 0.159448
+      er_trend_min: 0.25461
+      adx_range_max: 20.69
+      adx_trend_min: 25.67
+    4h:
+      er_range_max: 0.162738
+      er_trend_min: 0.258763
+      adx_range_max: 20.98
+      adx_trend_min: 26.05
+    1d:
+      er_range_max: 0.153905
+      er_trend_min: 0.245566
+      adx_range_max: 20.17
+      adx_trend_min: 24.83
+  AUDUSD:
+    1h:
+      er_range_max: 0.16552
+      er_trend_min: 0.260721
+      adx_range_max: 21.98
+      adx_trend_min: 27.1
+    4h:
+      er_range_max: 0.16383
+      er_trend_min: 0.257863
+      adx_range_max: 21.64
+      adx_trend_min: 26.47
+    1d:
+      er_range_max: 0.155108
+      er_trend_min: 0.240271
+      adx_range_max: 19.45
+      adx_trend_min: 23.99
+  AUS200:
+    1h:
+      er_range_max: 0.156556
+      er_trend_min: 0.248974
+      adx_range_max: 20.09
+      adx_trend_min: 24.96
+    4h:
+      er_range_max: 0.150067
+      er_trend_min: 0.237425
+      adx_range_max: 19.96
+      adx_trend_min: 24.74
+    1d:
+      er_range_max: 0.140149
+      er_trend_min: 0.226274
+      adx_range_max: 18.55
+      adx_trend_min: 22.53
+  EU50:
+    1h:
+      er_range_max: 0.168319
+      er_trend_min: 0.265207
+      adx_range_max: 21.7
+      adx_trend_min: 26.81
+    4h:
+      er_range_max: 0.158531
+      er_trend_min: 0.254224
+      adx_range_max: 21.91
+      adx_trend_min: 26.15
+    1d:
+      er_range_max: 0.154622
+      er_trend_min: 0.237811
+      adx_range_max: 19.06
+      adx_trend_min: 23.8
+  EURGBP:
+    1h:
+      er_range_max: 0.165033
+      er_trend_min: 0.263499
+      adx_range_max: 22.09
+      adx_trend_min: 27.8
+    4h:
+      er_range_max: 0.168965
+      er_trend_min: 0.264787
+      adx_range_max: 22.49
+      adx_trend_min: 27.42
+    1d:
+      er_range_max: 0.143219
+      er_trend_min: 0.230451
+      adx_range_max: 19.11
+      adx_trend_min: 23.26
+  GBPJPY:
+    1h:
+      er_range_max: 0.161894
+      er_trend_min: 0.256865
+      adx_range_max: 21.56
+      adx_trend_min: 27.01
+    4h:
+      er_range_max: 0.166906
+      er_trend_min: 0.267098
+      adx_range_max: 21.83
+      adx_trend_min: 27.09
+    1d:
+      er_range_max: 0.15823
+      er_trend_min: 0.251864
+      adx_range_max: 20.22
+      adx_trend_min: 24.7
+  GBPUSD:
+    1h:
+      er_range_max: 0.170939
+      er_trend_min: 0.26867
+      adx_range_max: 22.09
+      adx_trend_min: 27.59
+    4h:
+      er_range_max: 0.175772
+      er_trend_min: 0.275687
+      adx_range_max: 22.37
+      adx_trend_min: 27.25
+    1d:
+      er_range_max: 0.154869
+      er_trend_min: 0.243285
+      adx_range_max: 19.5
+      adx_trend_min: 23.61
+  GER40:
+    1h:
+      er_range_max: 0.172043
+      er_trend_min: 0.27475
+      adx_range_max: 22.11
+      adx_trend_min: 27.35
+    4h:
+      er_range_max: 0.15823
+      er_trend_min: 0.256292
+      adx_range_max: 21.83
+      adx_trend_min: 26.7
+    1d:
+      er_range_max: 0.146286
+      er_trend_min: 0.246503
+      adx_range_max: 19.27
+      adx_trend_min: 23.45
+  JP225:
+    1h:
+      er_range_max: 0.167152
+      er_trend_min: 0.265507
+      adx_range_max: 21.22
+      adx_trend_min: 26.41
+    4h:
+      er_range_max: 0.158644
+      er_trend_min: 0.25387
+      adx_range_max: 21.36
+      adx_trend_min: 26.25
+    1d:
+      er_range_max: 0.143015
+      er_trend_min: 0.233544
+      adx_range_max: 18.76
+      adx_trend_min: 24.18
+  NZDUSD:
+    1h:
+      er_range_max: 0.161597
+      er_trend_min: 0.256986
+      adx_range_max: 21.93
+      adx_trend_min: 27.22
+    4h:
+      er_range_max: 0.16509
+      er_trend_min: 0.259862
+      adx_range_max: 22.98
+      adx_trend_min: 28.66
+    1d:
+      er_range_max: 0.157757
+      er_trend_min: 0.250558
+      adx_range_max: 20.58
+      adx_trend_min: 25.31
+  UK100:
+    1h:
+      er_range_max: 0.14982
+      er_trend_min: 0.243537
+      adx_range_max: 19.7
+      adx_trend_min: 24.56
+    4h:
+      er_range_max: 0.149361
+      er_trend_min: 0.237904
+      adx_range_max: 20.21
+      adx_trend_min: 25.11
+    1d:
+      er_range_max: 0.151919
+      er_trend_min: 0.236476
+      adx_range_max: 18.37
+      adx_trend_min: 23.29
+  US30:
+    1h:
+      er_range_max: 0.177446
+      er_trend_min: 0.279624
+      adx_range_max: 22.28
+      adx_trend_min: 28.02
+    4h:
+      er_range_max: 0.178181
+      er_trend_min: 0.279109
+      adx_range_max: 22.49
+      adx_trend_min: 27.86
+    1d:
+      er_range_max: 0.170376
+      er_trend_min: 0.258452
+      adx_range_max: 20.69
+      adx_trend_min: 24.58
+  US500:
+    1h:
+      er_range_max: 0.179191
+      er_trend_min: 0.284748
+      adx_range_max: 22.76
+      adx_trend_min: 28.43
+    4h:
+      er_range_max: 0.18153
+      er_trend_min: 0.287531
+      adx_range_max: 22.65
+      adx_trend_min: 27.87
+    1d:
+      er_range_max: 0.186606
+      er_trend_min: 0.27113
+      adx_range_max: 20.85
+      adx_trend_min: 25.27

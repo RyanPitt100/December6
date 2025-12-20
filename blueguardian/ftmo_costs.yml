@@ -1,0 +1,41 @@
+# ftmo_costs.yml
+# All values are *indicative* and can be tuned later.
+
+default:
+  spread_points: 10          # fallback
+  commission_per_lot: 7.0    # USD round-turn
+  swap_long_per_lot: 0.0
+  swap_short_per_lot: 0.0
+
+symbols:
+  USDCAD:
+    spread_points: 8
+    commission_per_lot: 7.0
+
+  USDJPY:
+    spread_points: 8
+    commission_per_lot: 7.0
+
+  AUDJPY:
+    spread_points: 10
+    commission_per_lot: 7.0
+
+  UK100:
+    spread_points: 140       # indices are in index points × 10 usually
+    commission_per_lot: 0.0  # often all-in spread
+
+  GER40:
+    spread_points: 100
+    commission_per_lot: 0.0
+
+  US30:
+    spread_points: 200
+    commission_per_lot: 0.0
+
+  US500:
+    spread_points: 80
+    commission_per_lot: 0.0
+
+  JP225:
+    spread_points: 200
+    commission_per_lot: 0.0

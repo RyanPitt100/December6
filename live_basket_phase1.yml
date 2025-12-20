@@ -1,0 +1,6 @@
+# live_basket_phase1.yml
+instruments:
+  - USDJPY
+  - USDCAD
+  - EURUSD
+mode: "phase1_single_portfolio"

@@ -1,0 +1,25 @@
+account_type: FTMO
+safety_buffer_pct: 0.8
+
+eval_phase:
+  enabled: true
+  starting_equity: 200000      # starting eval balance
+  profit_target_pct: 10.0      # 10% target = 220k
+  lock_trading_on_target: true
+
+limits:
+  raw_daily_loss_limit_pct: 5.0   # FTMO
+  raw_total_loss_limit_pct: 10.0  # FTMO
+  raw_max_unrealised_loss_pct: 0.0   # Not used by FTMO (0 = disabled)
+
+  internal_daily_loss_limit_pct: 4.0
+  internal_total_loss_limit_pct: 8.0
+  internal_max_unrealised_loss_pct: 0.0  # Not used by FTMO (0 = disabled)
+
+risk_envelope_guard:
+  enabled: true
+  safety_margin_pct: 0.5
+
+actions:
+  on_soft_brake: "block_new_trades"
+  on_hard_brake: "flatten_and_disable_until_next_day"

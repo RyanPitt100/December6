@@ -1,0 +1,7 @@
+# selection_criteria.yml
+selection_criteria:
+  min_oos_trades: 55
+  min_mean_R: 0.20
+  min_median_mc_finalR: 15.0   # R
+  max_p95_mc_dd_R: -12.0       # R (must be >= this, i.e. not worse than -12)
+  min_recommended_risk_pct: 0.40

@@ -1,0 +1,25 @@
+account_type: Blueguardian
+safety_buffer_pct: 0.8
+
+eval_phase:
+  enabled: true
+  starting_equity: 200000
+  profit_target_pct: 8.0       # Blueguardian standard
+  lock_trading_on_target: true
+
+limits:
+  raw_daily_loss_limit_pct: 4.0      # Blueguardian official
+  raw_total_loss_limit_pct: 8.0      # Blueguardian official
+  raw_max_unrealised_loss_pct: 2.0   # Blueguardian specific
+
+  internal_daily_loss_limit_pct: 3.2   # 80% of 4%
+  internal_total_loss_limit_pct: 6.4   # 80% of 8%
+  internal_max_unrealised_loss_pct: 1.6  # 80% of 2%
+
+risk_envelope_guard:
+  enabled: true
+  safety_margin_pct: 0.5
+
+actions:
+  on_soft_brake: "block_new_trades"
+  on_hard_brake: "flatten_and_disable_until_next_day"

@@ -1,0 +1,38 @@
+# Data files (too large for git)
+15m/
+1h/
+4h/
+1d/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+
+# Logs and databases
+*.log
+*.db
+bot_output.log
+trades.db
+
+# Test outputs
+test_sim_*.csv
+test_sim_*.json
+
+# Secrets (if any)
+.env
+credentials.json
+
+# OS files
+.DS_Store
+Thumbs.db
+# Credentials
+config/credentials.yml
+blueguardian/config/credentials.yml
+.claude/

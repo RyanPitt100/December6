@@ -1,0 +1,40 @@
+# live_config.yml - Blueguardian Version
+
+account:
+  currency: "USD"
+  initial_equity: 200000.0      # Blueguardian starting equity
+  prop_firm: "Blueguardian"     # Use Blueguardian rules
+
+risk:
+  per_trade_risk_pct: 0.25      # % of equity per trade (start tiny)
+  max_total_risk_pct: 1.0       # max open risk across all positions
+  max_positions: 5
+
+blueguardian_rules:
+  daily_loss_limit_pct: 4.0     # Blueguardian official
+  max_relative_dd_pct: 8.0      # Blueguardian official
+  max_unrealised_loss_pct: 2.0  # Blueguardian specific - floating loss limit
+  safety_buffer_pct: 0.5        # stop opening trades before the hard limit
+  weekend_flatten: true
+  close_before_news_minutes: 0  # 0 for now; news filter can be added later
+
+data:
+  # Where your CSV history is stored (for shadow / dry-run).
+  data_root: "./"
+  m15_dir: "15m"
+  h1_dir: "1h"
+  h4_dir: "4h"
+  d1_dir: "1d"
+
+  regimes_root: "./regimes"
+  regimes_h1_dir: "1h"
+  regimes_h4_dir: "4h"
+  regimes_d1_dir: "1d"
+
+execution:
+  broker: "MT5"
+  symbol_suffix: ""     # e.g. ".pro" if your broker uses suffixes
+  lot_size_per_1pct_risk: 1.0   # we'll compute size from ATR; this is a fallback
+
+costs:
+  ftmo_costs_file: "ftmo_costs.yml"

@@ -1,0 +1,14 @@
+portfolio_id: phase2_core
+
+risk_per_trade_eval_pct: 0.5   # FTMO eval / verification
+risk_per_trade_funded_pct: 0.5  # once funded, keeping same risk as eval
+
+max_open_trades: 10           # portfolio cap
+max_risk_at_once_pct: 3.0     # sum of per-trade risk if all stops hit
+slippage_buffer_pct_of_r: 0.1 # extra cushion
+
+position_sizing:
+  mode: atr
+  atr_lookback: 20
+  atr_multiplier_sl: 2.0
+  risk_per_trade_basis: "equity"

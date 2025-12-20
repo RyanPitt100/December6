@@ -1,0 +1,17 @@
+portfolio_id: phase2_core
+instruments:
+  - symbol: USDCAD
+    weight: 0.1667
+  - symbol: JP225.cash
+    weight: 0.1667
+  - symbol: AUS200.cash
+    weight: 0.1667
+  - symbol: GER40.cash
+    weight: 0.1667
+  - symbol: EURUSD
+    weight: 0.1667
+  - symbol: USDJPY
+    weight: 0.1667
+notes: >
+  Phase 2 core trend-pullback portfolio.
+  Equal-weighted, 6 instruments, based on WF+MC selection and risk constraints.

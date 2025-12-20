@@ -1,0 +1,13 @@
+# live_basket_phase2.yml
+instruments:
+  core:
+    - USDJPY
+    - USDCAD
+    - EURUSD
+    - GER40
+    - AUS200
+    - JP225
+  optional:
+    - USDCHF
+    - US500
+mode: "phase2_evaluation"
