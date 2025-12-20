@@ -526,3 +526,56 @@ def _execute_close_order(order: Order) -> None:
             )
 
         print(f"[MT5] CLOSE {symbol} {position.volume:.2f} lots @ {price:.5f} (reason: {order.reason})")
+
+
+# ---------------------------------------------------------------------------
+# Market Context Helpers
+# ---------------------------------------------------------------------------
+
+def get_spread_points(symbol: str) -> Optional[float]:
+    """
+    Get current spread in points for a symbol.
+
+    Args:
+        symbol: MT5 symbol name
+
+    Returns:
+        Spread in points, or None if unavailable
+    """
+    tick = mt5.symbol_info_tick(symbol)
+    if tick is None:
+        return None
+
+    symbol_info = mt5.symbol_info(symbol)
+    if symbol_info is None:
+        return None
+
+    # Spread in points = (ask - bid) / point
+    spread_points = (tick.ask - tick.bid) / symbol_info.point
+    return spread_points
+
+
+def get_symbol_info(symbol: str) -> Optional[Dict]:
+    """
+    Get symbol information including point value, digits, etc.
+
+    Args:
+        symbol: MT5 symbol name
+
+    Returns:
+        Dict with symbol info, or None if unavailable
+    """
+    info = mt5.symbol_info(symbol)
+    if info is None:
+        return None
+
+    return {
+        "symbol": info.name,
+        "point": info.point,
+        "digits": info.digits,
+        "spread": info.spread,
+        "trade_contract_size": info.trade_contract_size,
+        "volume_min": info.volume_min,
+        "volume_max": info.volume_max,
+        "volume_step": info.volume_step,
+    }

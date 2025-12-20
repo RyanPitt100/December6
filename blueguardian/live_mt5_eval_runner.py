@@ -97,7 +97,7 @@ from mt5_multi_tf_builder import build_multi_tf_from_mt5, get_latest_completed_b
 print("[INIT] Importing live_signal_generator...", flush=True)
 from live_signal_generator import generate_signals_for_portfolio
 print("[INIT] Importing trade_logger...", flush=True)
-from trade_logger import get_logger
+from trade_logger import get_logger, get_entry_context
 print("[INIT] Importing discord_notifier...", flush=True)
 from discord_notifier import get_discord_notifier
 print("[INIT] Importing yaml...", flush=True)
@@ -117,6 +117,72 @@ def load_prop_firm_from_live_config() -> str:
         return "ftmo"
 
 
+def get_market_context_at_entry(
+    instrument: str,
+    instrument_data: Dict[str, pd.DataFrame],
+    current_ts: pd.Timestamp,
+) -> Dict[str, any]:
+    """
+    Extract market context data at entry time for logging.
+
+    Args:
+        instrument: Symbol name
+        instrument_data: Dict of symbol -> DataFrame with OHLC and indicators
+        current_ts: Current timestamp
+
+    Returns:
+        Dict with ATR, ADX, ER, spread, session, hour, day_of_week
+    """
+    context = {
+        "atr_at_entry": None,
+        "atr_percentile": None,
+        "spread_at_entry": None,
+        "adx_at_entry": None,
+        "er_at_entry": None,
+        "session": None,
+        "entry_hour": None,
+        "entry_day_of_week": None,
+    }
+
+    # Time-based context
+    entry_time = current_ts.to_pydatetime() if hasattr(current_ts, 'to_pydatetime') else current_ts
+    time_context = get_entry_context(entry_time)
+    context.update(time_context)
+
+    # Get spread from MT5
+    try:
+        spread = mt5_bridge.get_spread_points(instrument)
+        if spread is not None:
+            context["spread_at_entry"] = spread
+    except Exception:
+        pass  # Spread not critical
+
+    # Get ATR, ADX, ER from the data if available
+    if instrument in instrument_data:
+        df = instrument_data[instrument]
+        if current_ts in df.index:
+            row = df.loc[current_ts]
+
+            # Check for pre-computed indicators (from strategy)
+            # These may not exist in basic OHLC data
+            if 'atr' in row:
+                context["atr_at_entry"] = float(row['atr']) if pd.notna(row['atr']) else None
+            if 'adx' in row:
+                context["adx_at_entry"] = float(row['adx']) if pd.notna(row['adx']) else None
+            if 'er' in row:
+                context["er_at_entry"] = float(row['er']) if pd.notna(row['er']) else None
+
+            # Calculate ATR percentile (where current ATR ranks in recent history)
+            if 'atr' in df.columns and context["atr_at_entry"] is not None:
+                # Use last 100 bars for percentile calculation
+                recent_atr = df['atr'].dropna().tail(100)
+                if len(recent_atr) > 10:
+                    percentile = (recent_atr < context["atr_at_entry"]).sum() / len(recent_atr) * 100
+                    context["atr_percentile"] = float(percentile)
+
+    return context
+
+
 # ---------------------------------------------------------------------------
 # Signal Generation (Real Implementation)
 # ---------------------------------------------------------------------------
@@ -124,6 +190,7 @@ def load_prop_firm_from_live_config() -> str:
 # Cache for instrument data to avoid refetching on every iteration
 _instrument_data_cache: Dict[str, pd.DataFrame] = {}
 _last_full_refresh: Optional[datetime] = None
+_last_signal_bar_time: Optional[pd.Timestamp] = None  # Track latest bar time for context
 _FULL_REFRESH_INTERVAL_HOURS = 4  # Full refresh every 4 hours
 _DATA_FETCH_TIMEOUT_SECONDS = 30  # Max time to fetch data for one instrument
 
@@ -154,7 +221,7 @@ def generate_signals(portfolio_cfg) -> List[TradeSignal]:
     Returns:
         List of TradeSignal objects ready for portfolio controller
     """
-    global _instrument_data_cache, _last_full_refresh
+    global _instrument_data_cache, _last_full_refresh, _last_signal_bar_time
 
     current_time = pd.Timestamp.now(tz='UTC')
 
@@ -266,6 +333,9 @@ def generate_signals(portfolio_cfg) -> List[TradeSignal]:
     if latest_bar_time is None:
         print(f"[SIGNAL GEN] No completed bars available yet")
         return []
+
+    # Store bar time for market context logging
+    _last_signal_bar_time = latest_bar_time
 
     print(f"[SIGNAL GEN] Generating signals for bar at {latest_bar_time}")
 
@@ -613,6 +683,13 @@ def run_live_loop(
 
                             # Log execution for OPEN orders
                             if order.action == "open":
+                                # Get market context for enhanced logging
+                                market_context = get_market_context_at_entry(
+                                    instrument=order.instrument,
+                                    instrument_data=_instrument_data_cache,
+                                    current_ts=_last_signal_bar_time or pd.Timestamp.now(tz='UTC'),
+                                )
+
                                 execution_id = logger.log_execution(
                                     order_id=getattr(order, '_log_id', None),
                                     instrument=order.instrument,
@@ -622,8 +699,17 @@ def run_live_loop(
                                     tp_price=order.tp_price,
                                     size_lots=order.size_lots,
                                     reason=order.reason,
+                                    # Enhanced market context fields
+                                    atr_at_entry=market_context.get("atr_at_entry"),
+                                    atr_percentile=market_context.get("atr_percentile"),
+                                    spread_at_entry=market_context.get("spread_at_entry"),
+                                    adx_at_entry=market_context.get("adx_at_entry"),
+                                    er_at_entry=market_context.get("er_at_entry"),
+                                    session=market_context.get("session"),
+                                    entry_hour=market_context.get("entry_hour"),
+                                    entry_day_of_week=market_context.get("entry_day_of_week"),
                                 )
-                                print(f"[LOG] Execution logged: ID={execution_id}")
+                                print(f"[LOG] Execution logged: ID={execution_id} (session={market_context.get('session')})")
 
                                 # Send Discord notification
                                 if discord:

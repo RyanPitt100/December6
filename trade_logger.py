@@ -95,6 +95,15 @@ class TradeLogger:
                 tp_price REAL,
                 size_lots REAL NOT NULL,
                 reason TEXT,
+                -- Market context at entry (for future analysis)
+                atr_at_entry REAL,
+                atr_percentile REAL,
+                spread_at_entry REAL,
+                adx_at_entry REAL,
+                er_at_entry REAL,
+                session TEXT,
+                entry_hour INTEGER,
+                entry_day_of_week INTEGER,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (order_id) REFERENCES orders(id)
             )
@@ -116,6 +125,13 @@ class TradeLogger:
                 r_multiple REAL,
                 exit_reason TEXT,
                 duration_minutes INTEGER,
+                -- MAE/MFE for SL/TP optimization analysis
+                mae_price REAL,
+                mfe_price REAL,
+                mae_pips REAL,
+                mfe_pips REAL,
+                mae_r REAL,
+                mfe_r REAL,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (execution_id) REFERENCES executions(id)
             )
@@ -296,6 +312,15 @@ class TradeLogger:
         tp_price: Optional[float],
         size_lots: float,
         reason: Optional[str] = None,
+        # Market context fields for analysis
+        atr_at_entry: Optional[float] = None,
+        atr_percentile: Optional[float] = None,
+        spread_at_entry: Optional[float] = None,
+        adx_at_entry: Optional[float] = None,
+        er_at_entry: Optional[float] = None,
+        session: Optional[str] = None,
+        entry_hour: Optional[int] = None,
+        entry_day_of_week: Optional[int] = None,
     ) -> int:
         """
         Log a trade execution (order filled).
@@ -309,6 +334,14 @@ class TradeLogger:
             tp_price: Take profit price (optional)
             size_lots: Position size in lots
             reason: Reason for trade (e.g., signal reason)
+            atr_at_entry: ATR value at time of entry
+            atr_percentile: ATR percentile (0-100) relative to recent history
+            spread_at_entry: Spread in points at time of entry
+            adx_at_entry: ADX indicator value at entry
+            er_at_entry: Efficiency Ratio at entry
+            session: Trading session ('london', 'ny', 'asia', 'overlap')
+            entry_hour: Hour of day (0-23 UTC)
+            entry_day_of_week: Day of week (0=Monday, 6=Sunday)
 
         Returns:
             Execution ID
@@ -321,9 +354,11 @@ class TradeLogger:
         cursor.execute("""
             INSERT INTO executions (
                 order_id, timestamp, instrument, direction, entry_price,
-                sl_price, tp_price, size_lots, reason
+                sl_price, tp_price, size_lots, reason,
+                atr_at_entry, atr_percentile, spread_at_entry,
+                adx_at_entry, er_at_entry, session, entry_hour, entry_day_of_week
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             order_id,
             timestamp,
@@ -334,6 +369,14 @@ class TradeLogger:
             tp_price,
             size_lots,
             reason,
+            atr_at_entry,
+            atr_percentile,
+            spread_at_entry,
+            adx_at_entry,
+            er_at_entry,
+            session,
+            entry_hour,
+            entry_day_of_week,
         ))
 
         execution_id = cursor.lastrowid
@@ -355,6 +398,13 @@ class TradeLogger:
         r_multiple: Optional[float] = None,
         exit_reason: Optional[str] = None,
         duration_minutes: Optional[int] = None,
+        # MAE/MFE fields for SL/TP optimization
+        mae_price: Optional[float] = None,
+        mfe_price: Optional[float] = None,
+        mae_pips: Optional[float] = None,
+        mfe_pips: Optional[float] = None,
+        mae_r: Optional[float] = None,
+        mfe_r: Optional[float] = None,
     ) -> int:
         """
         Log a trade close.
@@ -371,6 +421,12 @@ class TradeLogger:
             r_multiple: R multiple (e.g., 2.5R means 2.5x risk)
             exit_reason: Reason for exit ('tp', 'sl', 'manual', 'risk_limit')
             duration_minutes: Trade duration in minutes
+            mae_price: Max Adverse Excursion price (worst price during trade)
+            mfe_price: Max Favorable Excursion price (best price during trade)
+            mae_pips: MAE in pips (how far price went against you)
+            mfe_pips: MFE in pips (how far price went in your favor)
+            mae_r: MAE as R-multiple (e.g., -0.5R means halfway to stop)
+            mfe_r: MFE as R-multiple (e.g., 2.0R means price hit 2x target)
 
         Returns:
             Trade close ID
@@ -384,9 +440,10 @@ class TradeLogger:
             INSERT INTO trade_closes (
                 execution_id, timestamp, instrument, direction, entry_price,
                 exit_price, size_lots, pnl_currency, pnl_pct, r_multiple,
-                exit_reason, duration_minutes
+                exit_reason, duration_minutes,
+                mae_price, mfe_price, mae_pips, mfe_pips, mae_r, mfe_r
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             execution_id,
             timestamp,
@@ -400,6 +457,12 @@ class TradeLogger:
             r_multiple,
             exit_reason,
             duration_minutes,
+            mae_price,
+            mfe_price,
+            mae_pips,
+            mfe_pips,
+            mae_r,
+            mfe_r,
         ))
 
         close_id = cursor.lastrowid
@@ -670,3 +733,60 @@ def get_logger(db_path: str = "trades.db") -> TradeLogger:
     if _logger is None:
         _logger = TradeLogger(db_path)
     return _logger
+
+
+# ---------------------------------------------------------------------------
+# Helper functions for market context
+# ---------------------------------------------------------------------------
+
+def get_trading_session(timestamp: datetime) -> str:
+    """
+    Determine the trading session for a given timestamp.
+
+    Sessions (UTC times):
+        - Asia: 00:00 - 08:00 (Tokyo/Sydney)
+        - London: 08:00 - 16:00
+        - NY: 13:00 - 21:00
+        - London/NY overlap: 13:00 - 16:00
+
+    Args:
+        timestamp: datetime object (assumed UTC)
+
+    Returns:
+        Session name: 'asia', 'london', 'ny', 'london_ny_overlap', 'off_hours'
+    """
+    hour = timestamp.hour
+
+    # Define session boundaries (UTC)
+    asia_start, asia_end = 0, 8
+    london_start, london_end = 8, 16
+    ny_start, ny_end = 13, 21
+
+    # Check for overlap first
+    if london_start <= hour < london_end and ny_start <= hour < ny_end:
+        return "london_ny_overlap"
+    elif asia_start <= hour < asia_end:
+        return "asia"
+    elif london_start <= hour < london_end:
+        return "london"
+    elif ny_start <= hour < ny_end:
+        return "ny"
+    else:
+        return "off_hours"
+
+
+def get_entry_context(timestamp: datetime) -> Dict[str, Any]:
+    """
+    Get time-based context for an entry.
+
+    Args:
+        timestamp: Entry timestamp (assumed UTC)
+
+    Returns:
+        Dict with session, hour, and day_of_week
+    """
+    return {
+        "session": get_trading_session(timestamp),
+        "entry_hour": timestamp.hour,
+        "entry_day_of_week": timestamp.weekday(),  # 0=Monday, 6=Sunday
+    }
