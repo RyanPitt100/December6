@@ -436,6 +436,46 @@ def _execute_open_order(order: Order) -> None:
     else:
         raise ValueError(f"Invalid direction: {direction}")
 
+    # Check slippage - reject trade if price moved too much
+    MAX_SLIPPAGE_PERCENT = 50  # Max 50% of SL distance as slippage
+
+    if order.sl_price is not None and order.entry_price is not None:
+        sl_distance = abs(order.entry_price - order.sl_price)
+        price_slippage = abs(price - order.entry_price)
+        slippage_percent = (price_slippage / sl_distance * 100) if sl_distance > 0 else 0
+
+        print(f"[MT5] Price check: signal={order.entry_price:.2f}, actual={price:.2f}, slippage={price_slippage:.2f} ({slippage_percent:.1f}% of SL)")
+
+        if slippage_percent > MAX_SLIPPAGE_PERCENT:
+            raise RuntimeError(
+                f"Trade rejected: slippage too high ({slippage_percent:.1f}% > {MAX_SLIPPAGE_PERCENT}%). "
+                f"Signal price={order.entry_price:.2f}, current price={price:.2f}, SL distance={sl_distance:.2f}"
+            )
+
+    # Recalculate SL/TP based on actual execution price (not signal price)
+    # This preserves the same pip distance / R:R ratio from the signal
+    adjusted_sl = None
+    adjusted_tp = None
+
+    if order.sl_price is not None and order.sl_price > 0 and order.entry_price is not None:
+        sl_distance = abs(order.entry_price - order.sl_price)
+        if direction == "long":
+            adjusted_sl = price - sl_distance
+        else:
+            adjusted_sl = price + sl_distance
+
+    if order.tp_price is not None and order.tp_price > 0 and order.entry_price is not None:
+        tp_distance = abs(order.tp_price - order.entry_price)
+        if direction == "long":
+            adjusted_tp = price + tp_distance
+        else:
+            adjusted_tp = price - tp_distance
+
+    if adjusted_sl:
+        print(f"[MT5] SL adjusted: {order.sl_price:.2f} -> {adjusted_sl:.2f}")
+    if adjusted_tp:
+        print(f"[MT5] TP adjusted: {order.tp_price:.2f} -> {adjusted_tp:.2f}")
+
     # Prepare request
     request = {
         "action": mt5.TRADE_ACTION_DEAL,
@@ -445,16 +485,16 @@ def _execute_open_order(order: Order) -> None:
         "price": price,
         "deviation": 20,  # Max slippage in points
         "magic": 234000,  # Magic number for our bot
-        "comment": f"bot_{order.reason}",
+        "comment": f"bot_{order.reason}"[:31],  # MT5 comment limit is 31 chars
         "type_time": mt5.ORDER_TIME_GTC,
         "type_filling": mt5.ORDER_FILLING_IOC,
     }
 
-    # Add SL/TP if provided
-    if order.sl_price is not None and order.sl_price > 0:
-        request["sl"] = order.sl_price
-    if order.tp_price is not None and order.tp_price > 0:
-        request["tp"] = order.tp_price
+    # Add adjusted SL/TP
+    if adjusted_sl is not None:
+        request["sl"] = adjusted_sl
+    if adjusted_tp is not None:
+        request["tp"] = adjusted_tp
 
     # Send order
     result = mt5.order_send(request)
@@ -468,10 +508,10 @@ def _execute_open_order(order: Order) -> None:
         )
 
     print(f"[MT5] OPEN {direction.upper()} {symbol} {volume:.2f} lots @ {price:.5f}")
-    if order.sl_price:
-        print(f"[MT5]   SL: {order.sl_price:.5f}")
-    if order.tp_price:
-        print(f"[MT5]   TP: {order.tp_price:.5f}")
+    if adjusted_sl:
+        print(f"[MT5]   SL: {adjusted_sl:.5f}")
+    if adjusted_tp:
+        print(f"[MT5]   TP: {adjusted_tp:.5f}")
 
 
 def _execute_close_order(order: Order) -> None:

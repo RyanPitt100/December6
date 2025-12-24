@@ -1,5 +1,35 @@
 import os
 import pandas as pd
+import numpy as np
+
+
+def compute_atr(df: pd.DataFrame, period: int = 20) -> pd.Series:
+    """
+    Compute Average True Range (ATR) for a DataFrame with OHLC data.
+
+    Args:
+        df: DataFrame with 'high', 'low', 'close' columns
+        period: ATR period (default 20)
+
+    Returns:
+        Series with ATR values
+    """
+    high = df["high"]
+    low = df["low"]
+    close = df["close"]
+    prev_close = close.shift(1)
+
+    tr = pd.concat(
+        [
+            high - low,
+            (high - prev_close).abs(),
+            (low - prev_close).abs(),
+        ],
+        axis=1,
+    ).max(axis=1)
+
+    atr = tr.ewm(alpha=1.0 / period, adjust=False).mean()
+    return atr
 
 
 def load_ohlc(path: str, time_col: str = "timestamp") -> pd.DataFrame:
@@ -63,6 +93,41 @@ def load_regime_tf(instrument: str, tf: str, data_root: str = "./") -> pd.DataFr
     return df[cols]
 
 
+def load_ohlc_tf(instrument: str, tf: str, data_root: str = "./") -> pd.DataFrame:
+    """
+    Load raw OHLC CSV for a given timeframe (not labelled).
+    Expected path: {data_root}/{tf}/{instrument}.csv
+
+    Args:
+        instrument: Symbol name (e.g., "EURUSD")
+        tf: Timeframe directory (e.g., "1h", "4h")
+        data_root: Root data directory
+
+    Returns:
+        DataFrame with OHLC data, timestamp index
+    """
+    filename = f"{instrument}.csv"
+    path = os.path.join(data_root, tf, filename)
+
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"Missing OHLC data for {instrument} {tf}: {path}")
+
+    df = pd.read_csv(path)
+
+    if "timestamp" not in df.columns:
+        raise ValueError(f"{path} must contain a 'timestamp' column")
+
+    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
+    df = df.set_index("timestamp").sort_index()
+
+    # Make sure required OHLC columns exist
+    for col in ["open", "high", "low", "close"]:
+        if col not in df.columns:
+            raise ValueError(f"{path} missing '{col}' column")
+
+    return df[["open", "high", "low", "close"]]
+
+
 def build_multi_tf_frame(
     instrument: str,
     data_root: str = "./",
@@ -70,6 +135,8 @@ def build_multi_tf_frame(
     h1_dir: str = "1h",
     h4_dir: str = "4h",
     d1_dir: str = "1d",
+    include_h1_atr: bool = True,
+    atr_period: int = 20,
 ) -> pd.DataFrame:
     """
     Build a 15m frame with H1/H4/D1 regime labels merged in.
@@ -81,6 +148,8 @@ def build_multi_tf_frame(
         h1_dir: Subdirectory for 1h labelled data (default: "1h")
         h4_dir: Subdirectory for 4h labelled data (default: "4h")
         d1_dir: Subdirectory for 1d labelled data (default: "1d")
+        include_h1_atr: If True, compute and include H1 ATR (default: True)
+        atr_period: ATR period for H1 ATR calculation (default: 20)
 
     Returns:
         DataFrame with columns:
@@ -88,6 +157,7 @@ def build_multi_tf_frame(
         - regime_h1, range_score_h1
         - regime_h4
         - regime_d1
+        - atr_h1 (if include_h1_atr=True)
     """
     # Base 15m
     df_m15 = load_ohlc_15m(instrument, data_root=data_root)
@@ -104,6 +174,18 @@ def build_multi_tf_frame(
             "range_score": "range_score_h1",
         }
     )
+
+    # H1 ATR (load OHLC and compute ATR)
+    if include_h1_atr:
+        try:
+            h1_ohlc = load_ohlc_tf(instrument, h1_dir, data_root=data_root)
+            h1_ohlc["atr_h1"] = compute_atr(h1_ohlc, period=atr_period)
+            h1_atr = h1_ohlc[["atr_h1"]].reset_index().sort_values("timestamp")
+        except FileNotFoundError:
+            print(f"[WARNING] No H1 OHLC data for {instrument}, skipping H1 ATR")
+            h1_atr = None
+    else:
+        h1_atr = None
 
     # H4 regimes
     h4 = load_regime_tf(instrument, h4_dir, data_root=data_root)
@@ -122,6 +204,15 @@ def build_multi_tf_frame(
         on="timestamp",
         direction="backward",
     )
+
+    # Merge H1 ATR if available
+    if h1_atr is not None:
+        df = pd.merge_asof(
+            df.sort_values("timestamp"),
+            h1_atr.sort_values("timestamp"),
+            on="timestamp",
+            direction="backward",
+        )
 
     df = pd.merge_asof(
         df.sort_values("timestamp"),

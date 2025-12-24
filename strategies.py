@@ -535,3 +535,135 @@ class TrendEMAPullback:
             daily_trade_count[date_key] = daily_trade_count.get(date_key, 0) + 1
 
         return signals
+
+
+# ============================================================
+#        TREND EMA PULLBACK WITH H1 ATR (FOR SIZING)
+# ============================================================
+
+@dataclass
+class TrendEMAPullback_H1ATR_Params:
+    """
+    Same as TrendEMAPullbackParams but uses pre-computed H1 ATR
+    for SL/TP sizing (larger stops, suitable for swing trading).
+    """
+    ema_fast: int = 20
+    ema_slow: int = 50
+    rsi_length: int = 14
+    rsi_pullback_buy: float = 40.0
+    rsi_pullback_sell: float = 60.0
+    max_trades_per_day: int = 3
+    time_stop_bars: int = 32
+    sl_atr_mult: float = 1.5
+    tp_rr: float = 1.2   # >1R reward in trends
+
+
+class TrendEMAPullback_H1ATR:
+    """
+    Trend-following pullback strategy using H1 ATR for SL/TP sizing.
+
+    Entry: Same as TrendEMAPullback (15m EMA crossover + RSI pullback)
+    Exit: Uses H1 ATR for stop loss distance (larger, more swing-friendly stops)
+
+    This variant is designed for swing trading where:
+    - Entries are on 15m bars for precision
+    - Stops are based on H1 volatility for wider room
+    - Reduces whipsaws from intraday noise
+
+    Requires 'atr_h1' column in the input DataFrame (from build_multi_tf_frame).
+    """
+    def __init__(self, params: TrendEMAPullback_H1ATR_Params | None = None):
+        self.params = params or TrendEMAPullback_H1ATR_Params()
+        self.name = "Trend_EMA_Pullback_H1ATR"
+
+    def generate_signals(self, df_m15: pd.DataFrame, instrument: str) -> List[Signal]:
+        p = self.params
+        df = df_m15.copy()
+
+        # Check for required H1 ATR column
+        if "atr_h1" not in df.columns:
+            raise ValueError(
+                f"TrendEMAPullback_H1ATR requires 'atr_h1' column in data. "
+                f"Use build_multi_tf_frame with include_h1_atr=True."
+            )
+
+        # EMAs on M15 (for entry timing)
+        df["ema_fast"] = df["close"].ewm(span=p.ema_fast, adjust=False).mean()
+        df["ema_slow"] = df["close"].ewm(span=p.ema_slow, adjust=False).mean()
+
+        # RSI on M15 (for entry confirmation)
+        close = df["close"]
+        delta = close.diff()
+        gain = delta.clip(lower=0.0)
+        loss = -delta.clip(upper=0.0)
+        avg_gain = gain.ewm(alpha=1.0 / p.rsi_length, adjust=False).mean()
+        avg_loss = loss.ewm(alpha=1.0 / p.rsi_length, adjust=False).mean()
+        rs = avg_gain / avg_loss.replace(0, np.nan)
+        df["rsi"] = 100.0 - (100.0 / (1.0 + rs))
+
+        signals: List[Signal] = []
+        daily_trade_count: dict[pd.Timestamp, int] = {}
+
+        for t, row in df.iterrows():
+            date_key = t.normalize()
+
+            regime_h1 = str(row.get("regime_h1", "UNKNOWN"))
+            regime_h4 = str(row.get("regime_h4", "UNKNOWN"))
+
+            if regime_h1 != "TRENDING" or regime_h4 != "TRENDING":
+                continue
+
+            if any(pd.isna(row.get(k)) for k in ["ema_fast", "ema_slow", "atr_h1", "rsi"]):
+                continue
+
+            if daily_trade_count.get(date_key, 0) >= p.max_trades_per_day:
+                continue
+
+            ema_fast = float(row["ema_fast"])
+            ema_slow = float(row["ema_slow"])
+            atr_h1 = float(row["atr_h1"])  # Use H1 ATR instead of M15 ATR
+            rsi = float(row["rsi"])
+            price = float(row["close"])
+
+            long_trend = ema_fast > ema_slow
+            short_trend = ema_fast < ema_slow
+
+            long_pullback = long_trend and (rsi <= p.rsi_pullback_buy) and (price <= ema_fast)
+            short_pullback = short_trend and (rsi >= p.rsi_pullback_sell) and (price >= ema_fast)
+
+            if not (long_pullback or short_pullback):
+                continue
+
+            if long_pullback:
+                direction: Direction = "LONG"
+                entry = price
+                sl = entry - p.sl_atr_mult * atr_h1
+                tp = entry + p.sl_atr_mult * atr_h1 * p.tp_rr
+            else:
+                direction = "SHORT"
+                entry = price
+                sl = entry + p.sl_atr_mult * atr_h1
+                tp = entry - p.sl_atr_mult * atr_h1 * p.tp_rr
+
+            sig = Signal(
+                time=t,
+                instrument=instrument,
+                direction=direction,
+                entry_price=entry,
+                stop_loss=sl,
+                take_profit=tp,
+                strategy_name=self.name,
+                regime=regime_h1,
+                meta={
+                    "atr_h1": atr_h1,
+                    "rsi": rsi,
+                    "ema_fast": ema_fast,
+                    "ema_slow": ema_slow,
+                    "regime_h4": regime_h4,
+                    "time_stop_bars": p.time_stop_bars,
+                },
+            )
+            signals.append(sig)
+            daily_trade_count[date_key] = daily_trade_count.get(date_key, 0) + 1
+
+        return signals

@@ -1,10 +1,10 @@
-portfolio_id: phase2_core
+portfolio_id: h1atr_core
 
-risk_per_trade_eval_pct: 0.5   # FTMO eval / verification
-risk_per_trade_funded_pct: 0.5  # once funded, keeping same risk as eval
+risk_per_trade_eval_pct: 0.4   # BlueGuardian: 1% unrealised cap requires max 2 trades @ 0.4% = 0.8%
+risk_per_trade_funded_pct: 0.4  # Keep same conservative risk when funded
 
-max_open_trades: 10           # portfolio cap
-max_risk_at_once_pct: 3.0     # sum of per-trade risk if all stops hit
+max_open_trades: 2            # BlueGuardian 1% unrealised cap: 2 trades @ 0.4% = 0.8% worst case
+max_risk_at_once_pct: 0.8     # 2 trades @ 0.4% = 0.8% (stays under 1% unrealised limit)
 slippage_buffer_pct_of_r: 0.1 # extra cushion
 
 position_sizing:

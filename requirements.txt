@@ -1,0 +1,13 @@
+# Core dependencies for Trading Bot
+pandas
+numpy
+PyYAML
+requests
+MetaTrader5
+
+# Dashboard dependencies
+streamlit
+plotly
+
+# Visualization (optional, for regime analysis)
+matplotlib

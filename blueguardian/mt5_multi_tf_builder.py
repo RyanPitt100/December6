@@ -85,9 +85,26 @@ def _get_regime_params_for_instrument(symbol: str, timeframe: str) -> RegimePara
     )
 
 
+def _compute_atr(df: pd.DataFrame, period: int = 20) -> pd.Series:
+    """Compute ATR (Average True Range) for a DataFrame with OHLC data."""
+    high = df["high"]
+    low = df["low"]
+    close = df["close"]
+    prev_close = close.shift(1)
+    tr = pd.concat([
+        high - low,
+        (high - prev_close).abs(),
+        (low - prev_close).abs()
+    ], axis=1).max(axis=1)
+    atr = tr.ewm(alpha=1.0 / period, adjust=False).mean()
+    return atr
+
+
 def build_multi_tf_from_mt5(
     symbol: str,
     n_bars_15m: int = 500,
+    include_h1_atr: bool = True,
+    atr_period: int = 20,
 ) -> Optional[pd.DataFrame]:
     """
     Build multi-timeframe DataFrame from live MT5 data with regime labels.
@@ -101,6 +118,8 @@ def build_multi_tf_from_mt5(
     Args:
         symbol: MT5 symbol name (e.g., "EURUSD", "JP225.cash")
         n_bars_15m: Number of 15m bars to fetch (default: 500)
+        include_h1_atr: If True, compute H1 ATR and merge onto 15m bars (default: True)
+        atr_period: ATR lookback period for H1 ATR calculation (default: 20)
 
     Returns:
         DataFrame with 15m timestamp index and columns:
@@ -108,6 +127,7 @@ def build_multi_tf_from_mt5(
         - regime_h1, range_score_h1
         - regime_h4
         - regime_d1
+        - atr_h1 (if include_h1_atr=True)
 
         Returns None if data fetch fails.
 
@@ -175,6 +195,21 @@ def build_multi_tf_from_mt5(
         direction="backward"
     )
     df_15m.rename(columns={"regime": "regime_d1"}, inplace=True)
+
+    # Compute and merge H1 ATR if requested (for TrendEMAPullback_H1ATR strategy)
+    if include_h1_atr:
+        # Compute ATR on H1 data
+        df_h1_atr = df_h1.copy()
+        df_h1_atr["atr_h1"] = _compute_atr(df_h1_atr, period=atr_period)
+        df_h1_atr = df_h1_atr.reset_index()
+
+        # Merge H1 ATR onto 15m data (forward fill from H1 bars)
+        df_15m = pd.merge_asof(
+            df_15m.sort_values("timestamp"),
+            df_h1_atr[["timestamp", "atr_h1"]].sort_values("timestamp"),
+            on="timestamp",
+            direction="backward"
+        )
 
     # Set timestamp as index
     df_15m = df_15m.set_index("timestamp").sort_index()

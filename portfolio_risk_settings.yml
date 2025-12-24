@@ -1,7 +1,7 @@
-portfolio_id: phase2_core
+portfolio_id: h1atr_core
 
-risk_per_trade_eval_pct: 0.5   # FTMO eval / verification
-risk_per_trade_funded_pct: 0.5  # once funded, keeping same risk as eval
+risk_per_trade_eval_pct: 0.7   # H1 ATR system - 3% bust risk, 97% success rate
+risk_per_trade_funded_pct: 0.5  # once funded, reduce risk for capital preservation
 
 max_open_trades: 10           # portfolio cap
 max_risk_at_once_pct: 3.0     # sum of per-trade risk if all stops hit

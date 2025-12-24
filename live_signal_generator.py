@@ -2,23 +2,26 @@
 """
 live_signal_generator.py
 
-Shared signal generation logic for TrendEMAPullback strategy that works consistently
+Shared signal generation logic for TrendEMAPullback_H1ATR strategy that works consistently
 across walk-forward, live-sim, and live MT5 execution.
 
 This module provides the canonical source of truth for generating trading signals,
 ensuring identical behavior in all three modes:
-- Walk-forward backtesting (walkforward_multi_instrument.py)
+- Walk-forward backtesting (walkforward_h1atr.py)
 - Historical live simulation (live_sim_trend_portfolio.py)
 - Live MT5 execution (live_mt5_eval_runner.py)
 
 The key function `generate_trend_ema_pullback_signals` takes multi-timeframe data
 and produces TradeSignal objects that can be passed directly to the portfolio controller.
+
+UPDATE: Now uses TrendEMAPullback_H1ATR strategy which uses H1 ATR for SL/TP sizing
+(wider stops, more suitable for swing trading with 15m entries).
 """
 
 from typing import List, Dict, Any, Optional
 import pandas as pd
 
-from strategies import TrendEMAPullback, Signal, TrendEMAPullbackParams
+from strategies import TrendEMAPullback_H1ATR, Signal, TrendEMAPullback_H1ATR_Params
 from portfolio_controller import TradeSignal
 
 
@@ -26,13 +29,13 @@ def generate_trend_ema_pullback_signals(
     instrument: str,
     mtf_data: pd.DataFrame,
     current_ts: pd.Timestamp,
-    params: Optional[TrendEMAPullbackParams] = None,
+    params: Optional[TrendEMAPullback_H1ATR_Params] = None,
 ) -> List[TradeSignal]:
     """
-    Generate TrendEMAPullback signals for a single instrument at a specific timestamp.
+    Generate TrendEMAPullback_H1ATR signals for a single instrument at a specific timestamp.
 
     This function is the canonical source of truth for signal generation, used by:
-    - Walk-forward backtesting (via strategies.TrendEMAPullback.generate_signals)
+    - Walk-forward backtesting (via strategies.TrendEMAPullback_H1ATR.generate_signals)
     - Historical live simulation (via trend_wf_logic.generate_trend_ema_pullback_trades_from_df)
     - Live MT5 execution (via this function directly)
 
@@ -44,16 +47,17 @@ def generate_trend_ema_pullback_signals(
         mtf_data: Multi-timeframe DataFrame from build_multi_tf_frame() with columns:
                   - OHLC: open, high, low, close
                   - Regime labels: regime_h1, regime_h4, regime_d1
+                  - atr_h1: H1 ATR for SL/TP sizing (required for H1ATR strategy)
                   - Optional: range_score_h1
         current_ts: Current timestamp (use latest completed bar time for live trading)
-        params: Optional TrendEMAPullbackParams (uses defaults if None)
+        params: Optional TrendEMAPullback_H1ATR_Params (uses defaults if None)
 
     Returns:
         List of TradeSignal objects ready for portfolio_controller.decide_portfolio_orders()
 
     Implementation notes:
         - Only processes data up to and including current_ts (no lookahead)
-        - Uses the exact same TrendEMAPullback strategy logic as WF/live-sim
+        - Uses TrendEMAPullback_H1ATR strategy (H1 ATR for wider stops)
         - Converts Signal objects (from strategies.py) to TradeSignal objects (for portfolio_controller.py)
         - Regime filtering: Requires both H1 and H4 to be "TRENDING"
         - Returns empty list if no signals at current_ts
@@ -78,8 +82,13 @@ def generate_trend_ema_pullback_signals(
         # Not enough data for EMA50 + ATR + RSI
         return []
 
-    # Generate signals using canonical TrendEMAPullback strategy
-    strategy = TrendEMAPullback(params=params)
+    # Check for required atr_h1 column
+    if "atr_h1" not in data_slice.columns:
+        # Missing H1 ATR - cannot generate signals
+        return []
+
+    # Generate signals using TrendEMAPullback_H1ATR strategy (H1 ATR for SL/TP)
+    strategy = TrendEMAPullback_H1ATR(params=params)
     signals: List[Signal] = strategy.generate_signals(data_slice, instrument=instrument)
 
     # Filter signals to only those at current_ts
@@ -97,7 +106,7 @@ def generate_trend_ema_pullback_signals(
             entry_price=sig.entry_price,
             sl_price=sig.stop_loss,
             tp_price=sig.take_profit,
-            reason=f"trend_ema_pullback_{sig.direction.lower()}_entry"
+            reason=f"trend_ema_pullback_h1atr_{sig.direction.lower()}_entry"
         )
         trade_signals.append(trade_signal)
 
@@ -108,7 +117,7 @@ def generate_signals_for_portfolio(
     instrument_data: Dict[str, pd.DataFrame],
     current_ts: pd.Timestamp,
     portfolio_instruments: List[str],
-    params: Optional[TrendEMAPullbackParams] = None,
+    params: Optional[TrendEMAPullback_H1ATR_Params] = None,
 ) -> List[TradeSignal]:
     """
     Generate signals for all instruments in a portfolio at a specific timestamp.

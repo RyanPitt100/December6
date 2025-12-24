@@ -827,18 +827,21 @@ def run_live_loop(
                     last_summary_date = today
                     logger.log_event("INFO", "daily_summary", f"Daily summary sent: P&L=${daily_pnl:.2f} ({daily_pnl_pct:.2f}%), Trades={trades_today}")
 
-            # Step 9: Sleep until next 15-minute candle close + buffer
+            # Step 9: Sleep until 5 seconds after next 15-minute candle close
+            # Checks at: HH:00:05, HH:15:05, HH:30:05, HH:45:05
+            # We wait 5 seconds past the boundary to ensure the candle is fully closed
             now = datetime.now()
-            # Calculate minutes until next 15-min mark (00, 15, 30, 45)
+            # Calculate seconds until next 15-min mark (00, 15, 30, 45) + 5 second buffer
             minutes_past = now.minute % 15
-            if minutes_past == 0 and now.second < 10:
-                # We just ran, wait for next 15-min mark
-                minutes_to_wait = 15
-            else:
-                minutes_to_wait = 15 - minutes_past
+            seconds_past = now.second
 
-            # Calculate exact seconds to wait: next 15-min mark + 5 seconds buffer
-            seconds_to_wait = (minutes_to_wait * 60) - now.second + 5
+            if minutes_past == 0 and seconds_past < 10:
+                # We just ran, wait for next 15-min mark + 5 seconds
+                seconds_to_wait = (15 * 60) - seconds_past + 5
+            else:
+                # Wait until next 15-min boundary + 5 seconds
+                seconds_to_wait = ((15 - minutes_past) * 60) - seconds_past + 5
+
             if seconds_to_wait < 10:
                 seconds_to_wait += 900  # Add 15 min if we're too close
 
